@@ -112,3 +112,43 @@ hourly_data["temperature_2m"] = hourly_temperature_2m
 hourly_dataframe = pd.DataFrame(data = hourly_data)
 print(hourly_dataframe)
 ```
+
+## Run docker containers
+
+You need to configure these variables in the `.env` file:
+
+```
+OPEN_METEO_MODELS=ncep_gfs013,copernicus_era5,copernicus_dem90,cams_europe
+OPEN_METEO_VARIABLES=temperature_2m,precipitation,carbon_monoxide,nitrogen_dioxide,ozone,pm10,pm2_5
+OPEN_METEO_MAX_AGE_DAYS=3
+OPEN_METEO_REPEAT_INTERVAL=5
+OPEN_METEO_CONCURRENT=4
+```
+
+Run `docker-compose.yml`:
+
+```yaml
+open-meteo-api:
+    image: ghcr.io/open-meteo/open-meteo
+    container_name: ecosensor-openmeteo-api
+    ports:
+      - ${OPEN_METEO_PORT}:8080
+    command: serve
+    volumes:
+      - ./openmeteo-data/openmeteo:/app/data
+    restart: always
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+  open-meteo-sync:
+    image: ghcr.io/open-meteo/open-meteo
+    container_name: ecosensor-openmeteo-sync
+    command: sync ${OPEN_METEO_MODELS} ${OPEN_METEO_VARIABLES} --past-days ${OPEN_METEO_MAX_AGE_DAYS} --repeat-interval ${OPEN_METEO_REPEAT_INTERVAL} --concurrent ${OPEN_METEO_CONCURRENT}
+    volumes:
+      - ./openmeteo-data/openmeteo:/app/data
+    restart: always
+    networks:
+      - ecosensor-network
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+```
